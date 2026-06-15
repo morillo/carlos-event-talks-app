@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BigQuery Release Notes Hub</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" type="image/png" href="https://img.icons8.com/color/48/google-cloud.png">
+</head>
+<body>
+    <div class="stars"></div>
+    <div class="glowing-bg"></div>
+
+    <div class="app-container">
+        <!-- Header Section -->
+        <header class="header">
+            <div class="logo-area">
+                <i class="fa-solid fa-database database-icon"></i>
+                <div class="title-meta">
+                    <h1>BigQuery <span class="gradient-text">Release Notes</span></h1>
+                    <p class="subtitle">Track Google BigQuery updates, filter topics, and share insights on Twitter.</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="sync-status" id="syncStatus">
+                    <span class="status-indicator"></span>
+                    <span class="status-text">Loading...</span>
+                </div>
+                <button class="btn btn-primary btn-refresh" id="btnRefresh" title="Force Refresh Feed">
+                    <i class="fa-solid fa-arrows-rotate rotate-icon" id="refreshIcon"></i>
+                    <span>Refresh</span>
+                </button>
+            </div>
+        </header>
+
+        <!-- Search & Filter Controls -->
+        <section class="controls-panel">
+            <div class="search-box-wrapper">
+                <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                <input type="text" id="searchInput" placeholder="Search release notes by keyword or feature..." autocomplete="off">
+                <button class="clear-search-btn" id="btnClearSearch" style="display: none;">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            
+            <div class="filters-row">
+                <div class="filter-group">
+                    <span class="filter-label">Filter by type:</span>
+                    <div class="filter-pills" id="typeFilters">
+                        <button class="filter-pill active" data-type="all">All</button>
+                        <button class="filter-pill" data-type="feature" data-color="feature">
+                            <span class="pill-dot dot-feature"></span>Feature
+                        </button>
+                        <button class="filter-pill" data-type="deprecation" data-color="deprecation">
+                            <span class="pill-dot dot-deprecation"></span>Deprecation
+                        </button>
+                        <button class="filter-pill" data-type="resolved" data-color="resolved">
+                            <span class="pill-dot dot-resolved"></span>Resolved
+                        </button>
+                        <button class="filter-pill" data-type="changed" data-color="changed">
+                            <span class="pill-dot dot-changed"></span>Changed
+                        </button>
+                        <button class="filter-pill" data-type="other" data-color="other">
+                            <span class="pill-dot dot-other"></span>Other
+                        </button>
+                    </div>
+                </div>
+
+                <div class="sort-group">
+                    <label for="sortOrder">Sort Date:</label>
+                    <select id="sortOrder" class="sort-select">
+                        <option value="newest">Newest First</option>
+                        <option value="oldest">Oldest First</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Selection Quick Action Stats (Floating top or inline) -->
+        <div class="selection-banner" id="selectionBanner" style="display: none;">
+            <div class="selection-banner-content">
+                <span class="selection-count"><i class="fa-regular fa-square-check"></i> <strong id="selectedCountText">0</strong> updates selected</span>
+                <div class="selection-actions">
+                    <button class="btn btn-secondary btn-sm" id="btnCancelSelection">Deselect All</button>
+                    <button class="btn btn-accent btn-sm" id="btnTweetSelected">
+                        <i class="fa-brands fa-x-twitter"></i> Tweet Selected (<span id="selectedCountBadge">0</span>)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content Area -->
+        <main class="content-area">
+            <!-- Loading Skeleton -->
+            <div class="skeleton-container" id="skeletonLoader">
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card"></div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <div class="empty-icon-wrapper">
+                    <i class="fa-regular fa-folder-open"></i>
+                </div>
+                <h3>No release notes found</h3>
+                <p>Try refining your search query or choosing a different filter category.</p>
+                <button class="btn btn-secondary" id="btnResetFilters">Reset Filters</button>
+            </div>
+
+            <!-- Notes List -->
+            <div class="releases-list" id="releasesList"></div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>BigQuery Release Notes Hub &bull; Powered by Flask &amp; Atom Feeds</p>
+            <p class="copyright">&copy; 2026 Carlos Morillo. Design crafted for excellence.</p>
+        </footer>
+    </div>
+
+    <!-- Tweet Composer Modal -->
+    <div class="modal-backdrop" id="tweetModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3><i class="fa-brands fa-x-twitter"></i> Compose Tweet</h3>
+                <button class="modal-close" id="btnCloseModal"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="tweet-options">
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="optIncludeLink" checked>
+                        <span class="checkmark"></span>
+                        Include source link
+                    </label>
+                    <label class="checkbox-container">
+                        <input type="checkbox" id="optIncludeHashtags" checked>
+                        <span class="checkmark"></span>
+                        Include hashtags (#BigQuery #GoogleCloud)
+                    </label>
+                </div>
+
+                <div class="textarea-wrapper">
+                    <textarea id="tweetTextarea" rows="6" placeholder="What's happening in BigQuery?"></textarea>
+                    <div class="textarea-footer">
+                        <span class="char-counter" id="charCounter">0 / 280</span>
+                    </div>
+                </div>
+
+                <!-- Tweet Live Preview -->
+                <div class="tweet-preview-container">
+                    <div class="preview-title">Preview on X</div>
+                    <div class="mock-tweet">
+                        <div class="mock-avatar">
+                            <i class="fa-brands fa-google-play"></i>
+                        </div>
+                        <div class="mock-content">
+                            <div class="mock-user-meta">
+                                <span class="mock-display-name">Cloud Dev Updates</span>
+                                <span class="mock-username">@cloud_updates</span>
+                                <span class="mock-dot">&middot;</span>
+                                <span class="mock-time">Just now</span>
+                            </div>
+                            <p class="mock-text" id="mockTweetText"></p>
+                            <div class="mock-card-preview" id="mockCardPreview">
+                                <div class="mock-card-image">
+                                    <i class="fa-solid fa-server"></i>
+                                </div>
+                                <div class="mock-card-details">
+                                    <div class="mock-card-domain">cloud.google.com</div>
+                                    <div class="mock-card-title">BigQuery Release Notes</div>
+                                    <div class="mock-card-desc">Stay up-to-date with the latest product updates, new features, and deprecations...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btnCancelTweet">Cancel</button>
+                <button class="btn btn-accent" id="btnPostTweet">
+                    <i class="fa-brands fa-x-twitter"></i> Share on X
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
