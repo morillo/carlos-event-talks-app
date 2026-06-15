@@ -20,6 +20,9 @@ let state = {
 // ==========================================================================
 const DOM = {
     btnRefresh: document.getElementById('btnRefresh'),
+    btnExportCSV: document.getElementById('btnExportCSV'),
+    btnThemeToggle: document.getElementById('btnThemeToggle'),
+    themeToggleIcon: document.getElementById('themeToggleIcon'),
     refreshIcon: document.getElementById('refreshIcon'),
     syncStatus: document.getElementById('syncStatus'),
     searchInput: document.getElementById('searchInput'),
@@ -58,6 +61,7 @@ const DOM = {
 // INITIALIZATION
 // ==========================================================================
 document.addEventListener('DOMContentLoaded', () => {
+    initTheme();
     setupEventListeners();
     fetchReleases();
 });
@@ -70,6 +74,14 @@ function setupEventListeners() {
     DOM.btnRefresh.addEventListener('click', () => {
         fetchReleases(true);
     });
+
+    // Export CSV Button
+    DOM.btnExportCSV.addEventListener('click', () => {
+        exportToCSV();
+    });
+
+    // Theme Toggle Button
+    DOM.btnThemeToggle.addEventListener('click', toggleTheme);
 
     // Search Input with Debounce & Clear
     DOM.searchInput.addEventListener('input', debounce((e) => {
@@ -172,14 +184,12 @@ async function fetchReleases(forceRefresh = false) {
 // ==========================================================================
 // RENDERING & FILTERING
 // ==========================================================================
-function renderReleases() {
-    DOM.releasesList.innerHTML = '';
-    
-    // 1. Filter releases
-    let filtered = state.releases.filter(item => {
+function getFilteredReleases() {
+    return state.releases.filter(item => {
         // Search Filter
+        const titleStr = item.title || item.date || '';
         const matchesSearch = !state.filters.search || 
-            item.title.toLowerCase().includes(state.filters.search) ||
+            titleStr.toLowerCase().includes(state.filters.search) ||
             item.type.toLowerCase().includes(state.filters.search) ||
             item.content.toLowerCase().includes(state.filters.search);
         
@@ -194,10 +204,7 @@ function renderReleases() {
         }
 
         return matchesSearch && matchesType;
-    });
-
-    // 2. Sort releases
-    filtered.sort((a, b) => {
+    }).sort((a, b) => {
         const dateA = a.updated ? new Date(a.updated) : new Date(a.date);
         const dateB = b.updated ? new Date(b.updated) : new Date(b.date);
         
@@ -207,8 +214,15 @@ function renderReleases() {
             return dateA - dateB;
         }
     });
+}
 
-    // 3. Toggle Empty State
+function renderReleases() {
+    DOM.releasesList.innerHTML = '';
+    
+    // 1. Filter and sort releases
+    const filtered = getFilteredReleases();
+
+    // 2. Toggle Empty State
     if (filtered.length === 0) {
         DOM.emptyState.style.display = 'block';
         DOM.releasesList.style.display = 'none';
@@ -218,11 +232,60 @@ function renderReleases() {
         DOM.releasesList.style.display = 'flex';
     }
 
-    // 4. Create Card Elements
+    // 3. Create Card Elements
     filtered.forEach(item => {
         const card = createCardElement(item);
         DOM.releasesList.appendChild(card);
     });
+}
+
+function exportToCSV() {
+    // Determine which items to export: selected items if any exist, otherwise all currently filtered items
+    let itemsToExport = [];
+    if (state.selectedIds.size > 0) {
+        itemsToExport = state.releases.filter(item => state.selectedIds.has(item.id));
+    } else {
+        itemsToExport = getFilteredReleases();
+    }
+    
+    if (itemsToExport.length === 0) {
+        showToast("No release notes to export!", "error");
+        return;
+    }
+    
+    // CSV headers
+    const headers = ["ID", "Date", "Type", "Content", "Link"];
+    
+    // Convert items to CSV rows
+    const rows = itemsToExport.map(item => {
+        const textSnippet = extractTextFromHTML(item.content);
+        return [
+            item.id,
+            item.date,
+            item.type,
+            textSnippet,
+            item.link
+        ].map(val => {
+            // Escape double quotes and wrap in quotes
+            const escaped = String(val).replace(/"/g, '""');
+            return `"${escaped}"`;
+        }).join(",");
+    });
+    
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    
+    // Create download link
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `bigquery_release_notes_${new Date().toISOString().slice(0,10)}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    showToast(`Successfully exported ${itemsToExport.length} updates to CSV!`, 'success');
 }
 
 function createCardElement(item) {
@@ -254,7 +317,7 @@ function createCardElement(item) {
         </div>
         <div class="card-footer-actions">
             <button class="card-btn card-btn-copy" data-action="copy" title="Copy update content to clipboard">
-                <i class="fa-regular fa-copy"></i> Copy Note
+                <i class="fa-regular fa-copy"></i> Copy to Clipboard
             </button>
             <button class="card-btn card-btn-tweet" data-action="tweet" title="Compose a Tweet about this update">
                 <i class="fa-brands fa-x-twitter"></i> Tweet Note
@@ -618,5 +681,35 @@ function formatSyncTime(isoStr) {
         return `${hours}:${minutes}:${seconds}`;
     } catch (e) {
         return isoStr;
+    }
+}
+
+// ==========================================================================
+// THEME MANAGEMENT LOGIC
+// ==========================================================================
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', savedTheme);
+    updateThemeIcon(savedTheme);
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
+    updateThemeIcon(newTheme);
+    showToast(`Switched to ${newTheme === 'dark' ? 'Dark' : 'Light'} Mode!`, 'success');
+}
+
+function updateThemeIcon(theme) {
+    if (!DOM.themeToggleIcon) return;
+    if (theme === 'light') {
+        DOM.themeToggleIcon.className = 'fa-solid fa-moon';
+        DOM.btnThemeToggle.title = 'Switch to Dark Theme';
+    } else {
+        DOM.themeToggleIcon.className = 'fa-solid fa-sun';
+        DOM.btnThemeToggle.title = 'Switch to Light Theme';
     }
 }
