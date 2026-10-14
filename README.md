@@ -27,7 +27,8 @@ An interactive web application designed to track, filter, search, and share Goog
 ```text
 bq-releases-notes/
 ├── app.py                  # Flask server application (feed parser & JSON API)
-├── requirements.txt        # Python package dependencies
+├── pyproject.toml          # Python package dependencies (uv)
+├── uv.lock                 # Locked dependency set
 ├── templates/
 │   └── index.html          # Main SPA frontend layout structure
 └── static/
@@ -44,7 +45,7 @@ bq-releases-notes/
 Follow these steps to run the application locally on your machine:
 
 ### Prerequisites
-- Python 3.8 or higher
+- [uv](https://docs.astral.sh/uv/) — installs the pinned Python 3.11 and the dependencies
 
 ### 1. Clone & Navigate
 Navigate to the project directory:
@@ -52,28 +53,16 @@ Navigate to the project directory:
 cd bq-releases-notes
 ```
 
-### 2. Set Up Virtual Environment
-Create and activate a virtual environment:
+### 2. Install Dependencies
+Setup: `uv sync` creates `.venv/` with the pinned Python and the locked dependencies (macOS, Linux and Windows):
 ```bash
-# On macOS/Linux
-python3 -m venv .venv
-source .venv/bin/activate
-
-# On Windows
-python -m venv .venv
-.venv\Scripts\activate
+uv sync
 ```
 
-### 3. Install Dependencies
-Install the required packages using pip:
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Run the Application
+### 3. Run the Application
 Start the Flask development server:
 ```bash
-python app.py
+uv run app.py
 ```
 By default, the application will be hosted locally at: [http://127.0.0.1:5000](http://127.0.0.1:5000)
 

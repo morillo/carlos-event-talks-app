@@ -1,0 +1,11 @@
+[project]
+name = "bq-releases-notes"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "flask==3.0.3",
+]
+
+[tool.uv]
+# Not a package: `uv sync` installs the dependencies only.
+package = false
