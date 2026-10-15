@@ -35,14 +35,14 @@ def fetch_and_parse_feed():
     pattern = re.compile(r'<h3>(.*?)</h3>(.*?)(?=(?:<h3>|$))', re.DOTALL | re.IGNORECASE)
     
     for entry in entries:
-        title_date = entry.find('atom:title', namespaces)
-        title_date = title_date.text.strip() if title_date is not None else "Unknown Date"
-        
+        title_elem = entry.find('atom:title', namespaces)
+        title_date = (title_elem.text or "").strip() if title_elem is not None else "Unknown Date"
+
         updated_elem = entry.find('atom:updated', namespaces)
-        updated_str = updated_elem.text.strip() if updated_elem is not None else ""
-        
+        updated_str = (updated_elem.text or "").strip() if updated_elem is not None else ""
+
         entry_id_elem = entry.find('atom:id', namespaces)
-        entry_id = entry_id_elem.text.strip() if entry_id_elem is not None else title_date
+        entry_id = (entry_id_elem.text or "").strip() if entry_id_elem is not None else title_date
         
         link_elem = entry.find('atom:link', namespaces)
         link_url = "https://cloud.google.com/bigquery/docs/release-notes"
@@ -50,7 +50,7 @@ def fetch_and_parse_feed():
             link_url = link_elem.attrib['href']
             
         content_elem = entry.find('atom:content', namespaces)
-        content_html = content_elem.text if content_elem is not None else ""
+        content_html = (content_elem.text or "") if content_elem is not None else ""
         
         # Parse updates within entry
         matches = pattern.findall(content_html)
