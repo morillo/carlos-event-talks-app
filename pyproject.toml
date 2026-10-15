@@ -9,3 +9,8 @@ dependencies = [
 [tool.uv]
 # Not a package: `uv sync` installs the dependencies only.
 package = false
+
+[dependency-groups]
+dev = [
+    "pyright>=1.1.414",
+]
